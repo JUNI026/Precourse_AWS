@@ -1,0 +1,7 @@
+INFO 서버 시작
+INFO 사용자 로그인
+ERROR 데이터베이스 연결 실패
+INFO 페이지 조회
+ERROR 파일을 찾을 수 없음
+INFO 사용자 로그아웃
+ERROR 데이터베이스 연결 실패
