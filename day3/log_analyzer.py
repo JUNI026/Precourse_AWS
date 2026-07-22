@@ -70,6 +70,36 @@ def parse_line(line: str) -> Optional[dict]:
         "status": match.group("status"),
     }
 
+def count_status_codes(status_counts: dict, status: str) -> None:
+    """
+    status_counts 딕셔너리에 상태코드 등장 횟수를 누적한다.
+    - 처음 등장한 상태코드면 0에서 시작해서 1을 더한다.
+    - 이미 있던 상태코드면 기존 값에 1을 더한다.
+    딕셔너리는 참조로 전달되므로, 함수 안에서 수정하면 원본도 바뀐다 (반환값 없음).
+    """
+    status_counts[status] = status_counts.get(status, 0) + 1
+ 
+ 
+def print_status_summary(status_counts: dict, success_count: int) -> None:
+    """
+    상태코드별 집계 결과를 보기 좋게 출력하고,
+    합계가 파싱 성공 줄 수와 일치하는지 확인해서 알려준다.
+    """
+    print("\n== 상태 코드별 요청 수 ==")
+ 
+    # 상태코드(문자열)를 기준으로 정렬해서 출력 (200, 301, 404, 500 순서)
+    for status in sorted(status_counts.keys()):
+        count = status_counts[status]
+        print(f"{status} : {count}개")
+ 
+    total_by_status = sum(status_counts.values())
+ 
+    print()
+    if total_by_status == success_count:
+        print(f"일치 (상태코드별 합계 {total_by_status} == 파싱 성공 수 {success_count})")
+    else:
+        print(f"불일치 (상태코드별 합계 {total_by_status} != 파싱 성공 수 {success_count})")
+
 
 def main():
     # 이 스크립트 파일이 있는 폴더를 기준으로 access.log 경로를 만든다
@@ -80,6 +110,7 @@ def main():
     success_count = 0   # 파싱 성공한 줄 수
     fail_count = 0       # 파싱 실패(건너뜀)한 줄 수
     preview_count = 0    # 미리보기로 출력한 줄 수
+    status_counts = {}   # 상태코드별 개수를 저장할 딕셔너리
 
     print("== 처음 5줄 파싱 ==")
 
@@ -91,11 +122,12 @@ def main():
             # 파싱 성공/실패 카운트
             if result is not None:
                 success_count += 1
+                count_status_codes(status_counts, result["status"])   # <- 이 줄 추가!
             else:
                 fail_count += 1
 
             # 확인용으로 첫 5줄의 파싱 결과만 출력
-            if preview_count < 5:
+            if preview_count < 5:   
                 print(result, "\n")
                 preview_count += 1
 
@@ -104,10 +136,6 @@ def main():
     print(f"전체 읽은 줄 수: {total_lines}")
     print(f"파싱 성공 줄 수: {success_count}")
     print(f"건너뛴 줄 수: {fail_count}")
-
-
-if __name__ == "__main__":
-    main()
 
 
 # --- 단계 2. 상태코드별 집계 ---
@@ -121,6 +149,13 @@ if __name__ == "__main__":
 # 🏁 개수의 총합이 (전체 줄 수 - 건너뛴 줄 수)와 일치하면 성공!
 
 # TODO: AI에게 받은 코드를 검증 후 여기에 붙여넣기
+
+    # 2단계: 상태코드별 집계 출력
+
+    print_status_summary(status_counts, success_count)
+
+if __name__ == "__main__":
+    main()
 
 
 # # --- 단계 3. 시간대별 집계 ---
