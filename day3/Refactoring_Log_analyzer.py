@@ -193,6 +193,7 @@ def print_top_ips(ip_counts: dict, top_n: int = 5) -> list:
 def print_method_summary(method_counts: dict) -> None:
     """HTTP 메서드별 집계 결과를 알파벳 순서로 정렬해서 출력한다."""
     print("\n== 메서드별 요청 수 ==")
+    #test
 
     for method in sorted(method_counts.keys()):
         count = method_counts[method]
