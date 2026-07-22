@@ -111,6 +111,7 @@ def main():
     fail_count = 0       # 파싱 실패(건너뜀)한 줄 수
     preview_count = 0    # 미리보기로 출력한 줄 수
     status_counts = {}   # 상태코드별 개수를 저장할 딕셔너리
+    hourly_counts = {f"{h:02d}": 0 for h in range(24)}
 
     print("== 처음 5줄 파싱 ==")
 
@@ -122,9 +123,11 @@ def main():
             # 파싱 성공/실패 카운트
             if result is not None:
                 success_count += 1
-                count_status_codes(status_counts, result["status"])   # <- 이 줄 추가!
-            else:
-                fail_count += 1
+                count_status_codes(status_counts, result["status"])
+ 
+                hour = extract_hour(result["time"])
+                if hour is not None:
+                    count_hourly(hourly_counts, hour)
 
             # 확인용으로 첫 5줄의 파싱 결과만 출력
             if preview_count < 5:   
@@ -153,9 +156,8 @@ def main():
     # 2단계: 상태코드별 집계 출력
 
     print_status_summary(status_counts, success_count)
+    print_hourly_summary(hourly_counts)
 
-if __name__ == "__main__":
-    main()
 
 
 # # --- 단계 3. 시간대별 집계 ---
@@ -173,6 +175,46 @@ if __name__ == "__main__":
 # 🏁 0~23시 순서대로 정렬되어 출력되면 성공!
 
 # TODO: AI에게 받은 코드를 검증 후 여기에 붙여넣기
+
+def extract_hour(time_str: str) -> Optional[str]:
+    """
+    "07/Jul/2026:14:23:45 +0900" 형태의 문자열에서 시(Hour) 부분만 뽑아 "14"처럼 반환한다.
+    ':' 기준으로 나누면 인덱스 1번이 시(Hour)에 해당한다.
+    형식이 이상해서 시를 뽑을 수 없으면 None을 반환한다.
+    """
+    parts = time_str.split(":")
+    if len(parts) < 2:
+        return None
+ 
+    hour = parts[1]
+    if not hour.isdigit():
+        return None
+ 
+    return hour
+ 
+ 
+def count_hourly(hourly_counts: dict, hour: str) -> None:
+    """
+    hourly_counts 딕셔너리에 시간대별 등장 횟수를 누적한다.
+    hourly_counts는 미리 "00" ~ "23" 키로 0 초기화되어 있다고 가정한다.
+    """
+    hourly_counts[hour] = hourly_counts.get(hour, 0) + 1
+ 
+ 
+def print_hourly_summary(hourly_counts: dict) -> None:
+    """
+    시간대별(00~23시) 집계 결과를 정수 순서대로 정렬해서 출력한다.
+    """
+    print("\n== 시간대 별 요청 수 ==")
+ 
+    # 키가 문자열("00", "01", ...)이므로 int로 변환해서 정렬 기준으로 사용
+    for hour in sorted(hourly_counts.keys(), key=int):
+        count = hourly_counts[hour]
+        print(f"{hour}시 : {count}개")
+
+if __name__ == "__main__":
+    main()
+
 
 
 # --- 단계 4. 에러 URL TOP 5 ---
