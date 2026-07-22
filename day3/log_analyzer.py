@@ -36,6 +36,7 @@ access.log 파일을 한 줄씩 읽어서 IP, 시각, HTTP 메서드, URL, 상�
 from typing import Optional
 import re
 import os
+import json
 
 # 로그 한 줄을 매칭하기 위한 정규표현식
 # 그룹 1: IP 주소
@@ -112,6 +113,7 @@ def main():
     preview_count = 0    # 미리보기로 출력한 줄 수
     status_counts = {}   # 상태코드별 개수를 저장할 딕셔너리
     hourly_counts = {f"{h:02d}": 0 for h in range(24)}
+    error_url_counts = {}  # 에러(400+) 상태코드의 URL별 개수를 저장할 딕셔너리
 
     print("== 처음 5줄 파싱 ==")
 
@@ -124,13 +126,18 @@ def main():
             if result is not None:
                 success_count += 1
                 count_status_codes(status_counts, result["status"])
- 
+
                 hour = extract_hour(result["time"])
                 if hour is not None:
                     count_hourly(hourly_counts, hour)
 
+                # 4단계: 400 이상 상태코드만 URL별로 집계
+                count_error_url(error_url_counts, result["status"], result["url"])
+            else:
+                fail_count += 1
+
             # 확인용으로 첫 5줄의 파싱 결과만 출력
-            if preview_count < 5:   
+            if preview_count < 5:
                 print(result, "\n")
                 preview_count += 1
 
@@ -139,6 +146,34 @@ def main():
     print(f"전체 읽은 줄 수: {total_lines}")
     print(f"파싱 성공 줄 수: {success_count}")
     print(f"건너뛴 줄 수: {fail_count}")
+
+    # 2단계: 상태코드별 집계 출력
+    print_status_summary(status_counts, success_count)
+
+    # 3단계: 시간대별 집계 출력
+    print_hourly_summary(hourly_counts)
+
+    # 4단계: 에러 최다 URL TOP 5 출력 (반환값으로 정렬된 리스트를 받음)
+    top5 = print_top_error_urls(error_url_counts, top_n=5)
+
+    # [(url, count), ...] 튜플 리스트 -> [[url, count], ...] 리스트의 리스트로 변환
+    # json 모듈은 튜플을 저장해도 어차피 배열(리스트)로 바뀌므로, 미리 리스트로 통일해둔다
+    top_error_urls = [list(t) for t in top5]
+
+    # 상태코드별 집계, 시간대별 집계, 에러 TOP5를 하나의 딕셔너리로 묶어서 저장
+    results = {
+        "status_counts": status_counts,
+        "hourly_counts": hourly_counts,
+        "top_error_urls": top_error_urls,
+    }
+
+    output_path = os.path.join(base_dir, "results.json")
+    with open(output_path, "w", encoding="utf-8") as f:
+        # ensure_ascii=False : 한글/특수문자가 유니코드 이스케이프(\uXXXX)로 깨져 보이지 않게 함
+        # indent=2 : 사람이 보기 좋게 들여쓰기
+        json.dump(results, f, ensure_ascii=False, indent=2)
+
+    print(f"\nresults.json 저장 완료: {output_path}")
 
 
 # --- 단계 2. 상태코드별 집계 ---
@@ -157,6 +192,7 @@ def main():
 
     print_status_summary(status_counts, success_count)
     print_hourly_summary(hourly_counts)
+    print_top_error_urls(error_url_counts, top_n=5)
 
 
 
@@ -212,10 +248,6 @@ def print_hourly_summary(hourly_counts: dict) -> None:
         count = hourly_counts[hour]
         print(f"{hour}시 : {count}개")
 
-if __name__ == "__main__":
-    main()
-
-
 
 # --- 단계 4. 에러 URL TOP 5 ---
 # 요구사항
@@ -236,11 +268,66 @@ if __name__ == "__main__":
 
 # TODO: AI에게 받은 코드를 검증 후 여기에 붙여넣기
 
+def count_error_url(error_url_counts: dict, status: str, url: str) -> None:
+    """
+    상태코드가 400 이상인 요청에 한해 URL별 발생 횟수를 누적한다.
+    status는 문자열이므로 반드시 int()로 변환한 뒤 크기 비교해야 한다.
+    (문자열끼리 비교하면 "9" > "400" 처럼 자릿수 때문에 잘못된 결과가 나올 수 있다)
+    """
+    if int(status) >= 400:
+        error_url_counts[url] = error_url_counts.get(url, 0) + 1
+ 
+ 
+def print_top_error_urls(error_url_counts: dict, top_n: int = 5) -> None:
+    """
+    에러(400 이상) 발생 횟수가 많은 URL을 상위 top_n개까지 순위와 함께 출력한다.
+    """
+    print("\n== 에러 최다 URL TOP 5 ==")
+ 
+    # error_url_counts.items() -> [(url, count), (url, count), ...] 형태의 리스트
+    # key=lambda item: item[1] : 각 튜플(item)에서 두 번째 값(count)을 정렬 기준으로 사용
+    # reverse=True : 개수가 많은 순서(내림차순)로 정렬
+    sorted_urls = sorted(error_url_counts.items(), key=lambda item: item[1], reverse=True)
+ 
+    top_urls = sorted_urls[:top_n]  # 상위 top_n개만 잘라냄
+ 
+    for rank, (url, count) in enumerate(top_urls, start=1):
+        print(f"{rank}위: {url} ({count}회)")
+
+
+
+
 
 # --- 마무리. 결과를 results.json으로 저장 ---
 # 단계 4까지 완성한 뒤, 아래 주석을 해제하세요.
 # ★ 키 이름(status_counts / hourly_counts / top_error_urls)은
 #   한 글자도 바꾸지 마세요. 내일 대시보드와 연결되는 이름입니다.
+
+
+def print_top_error_urls(error_url_counts: dict, top_n: int = 5) -> list:
+    """
+    에러(400 이상) 발생 횟수가 많은 URL을 상위 top_n개까지 순위와 함께 출력한다.
+    이후 JSON 저장 등에서 재사용할 수 있도록 top_urls 리스트를 반환한다.
+    반환 형태: [(url, count), (url, count), ...]
+    """
+    print("\n== 에러 최다 URL TOP 5 ==")
+
+    # error_url_counts.items() -> [(url, count), (url, count), ...] 형태의 리스트
+    # key=lambda item: item[1] : 각 튜플(item)에서 두 번째 값(count)을 정렬 기준으로 사용
+    # reverse=True : 개수가 많은 순서(내림차순)로 정렬
+    sorted_urls = sorted(error_url_counts.items(), key=lambda item: item[1], reverse=True)
+
+    top_urls = sorted_urls[:top_n]  # 상위 top_n개만 잘라냄
+
+    for rank, (url, count) in enumerate(top_urls, start=1):
+        print(f"{rank}위: {url} ({count}회)")
+
+    return top_urls
+
+
+if __name__ == "__main__":
+    main()
+
 
 # import json
 #
