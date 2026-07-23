@@ -8,18 +8,19 @@
   <style>
     body {
       font-family: sans-serif;
-      max-width: 900px;
+      max-width: 1100px;
       margin: 0 auto;
       padding: 20px;
-      background: #f5f6fa;
+      background: #0f1117;
+      color: #e6e6e6;
     }
     h1 { text-align: center; }
     .card {
-      background: white;
+      background: #1c1f26;
       border-radius: 8px;
       padding: 20px;
       margin-bottom: 24px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.4);
     }
     .summary-row {
       display: flex;
@@ -31,13 +32,30 @@
     }
     .summary-label {
       margin: 0;
-      color: #888;
+      color: #9aa0a6;
       font-size: 14px;
     }
     .summary-number {
       margin: 8px 0 0;
       font-size: 40px;
       font-weight: bold;
+      color: #e6e6e6;
+    }
+    .warning-icon {
+      font-size: 24px;
+      margin-left: 6px;
+      display: none;
+    }
+    .chart-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    .chart-grid .card {
+      margin-bottom: 0;
+    }
+    canvas {
+      max-height: 260px;
     }
   </style>
 </head>
@@ -60,40 +78,50 @@
     </div>
   </div>
 
-  <div class="card">
-    <h2>상태코드별 요청 수</h2>
-    <canvas id="statusChart"></canvas>
-  </div>
+  <div class="chart-grid">
+    <div class="card">
+      <h2>상태코드별 요청 수</h2>
+      <canvas id="statusChart"></canvas>
+    </div>
 
-  <div class="card">
-    <h2>시간대별 요청 수</h2>
-    <canvas id="hourlyChart"></canvas>
-  </div>
+    <div class="card">
+      <h2>시간대별 요청 수</h2>
+      <canvas id="hourlyChart"></canvas>
+    </div>
 
-  <div class="card">
-    <h2>에러 최다 URL TOP 5</h2>
-    <canvas id="errorChart"></canvas>
-  </div>
+    <div class="card">
+      <h2>에러 최다 URL TOP 5</h2>
+      <canvas id="errorChart"></canvas>
+    </div>
 
-  <div class="card">
-    <h2>의심 IP TOP 5</h2>
-    <canvas id="SuspiciousipChart"></canvas>
+    <div class="card">
+      <h2>의심 IP TOP 5</h2>
+      <canvas id="SuspiciousipChart"></canvas>
+    </div>
   </div>
 
   <script>
-    // 1. 상태코드별 막대 차트
+    // 다크모드용 공통 색상 (축, 범례, 그리드선)
+    Chart.defaults.color = "#e6e6e6";
+    Chart.defaults.borderColor = "#333844";
+
+
+    // 1. 상태코드별 도넛 차트
     new Chart(document.getElementById("statusChart"), {
-      type: "bar",
+      type: "doughnut",
       data: {
         labels: __STATUS_LABELS__,
         datasets: [{
           label: "요청 수",
           data: __STATUS_DATA__,
-          backgroundColor: "#4e79a7"
+          backgroundColor: [
+            "#4e79a7", "#59a14f", "#f28e2b", "#e15759",
+            "#76b7b2", "#edc948", "#b07aa1", "#ff9da7"
+          ]
         }]
       }
     });
-
+    
     // 2. 시간대별 선 차트
     new Chart(document.getElementById("hourlyChart"), {
       type: "line",
@@ -135,6 +163,12 @@
     },
     options: { indexAxis: "y" }
   });
+
+    // 5. 에러율 5% 초과 시 경고 이모티콘 표시
+    const errorRate = parseFloat("__ERROR_RATE__");
+    if (errorRate > 5) {
+      document.getElementById("errorWarning").style.display = "inline";
+    }
 
   </script>
 </body>

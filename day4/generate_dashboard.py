@@ -72,7 +72,7 @@ html = html.replace("__SUSPICIOUS_IP_DATA__", json.dumps(suspicious_ip_data))
 total = sum(status_counts.values())
 error_total = sum(cnt for code, cnt in status_counts.items() if int(code)>=400)
 error_percent = results["error_rate_percent"]
-html = html.replace("__ERROR_RATE__", f"{error_percent:.2f}%")  # 소수점 2자리
+html = html.replace("__ERROR_PERCENT__", f"{error_percent:.2f}%")  # 소수점 2자리
 html = html.replace("__TOTAL_COUNT__", f"{total:,}")  # 천 단위 구분 쉼표
 html = html.replace("__ERROR_COUNT__", f"{error_total:,}")
 html = html.replace("__GENERATED_AT__", datetime.now().strftime("%Y-%m-%d %H:%M"))
