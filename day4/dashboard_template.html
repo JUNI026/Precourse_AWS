@@ -74,7 +74,9 @@
     </div>
     <div class="card">
       <p class="summary-label">에러율</p>
-      <p class="summary-number" style="color:#e15759;">__ERROR_RATE__</p>
+      <p class="summary-number" style="color:#e15759;">__ERROR_RATE__
+        <span id="errorWarning" class="warning-icon">⚠️</span>
+      </p>
     </div>
   </div>
 
@@ -166,7 +168,7 @@
 
     // 5. 에러율 5% 초과 시 경고 이모티콘 표시
     const errorRate = parseFloat("__ERROR_RATE__");
-    if (errorRate > 5) {
+    if (errorRate > 4) {
       document.getElementById("errorWarning").style.display = "inline";
     }
 
