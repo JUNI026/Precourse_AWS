@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>서버 로그 분석 대시보드</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #f5f6fa;
+      --card: #ffffff;
+      --text: #222222;
+      --sub: #666666;
+      --shadow: rgba(0, 0, 0, 0.1);
+    }
+    body.dark {
+      --bg: #1a1d24;
+      --card: #252a34;
+      --text: #eaeaea;
+      --sub: #9aa0ab;
+      --shadow: rgba(0, 0, 0, 0.4);
+    }
+    body {
+      font-family: sans-serif;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px;
+      background: var(--bg);
+      color: var(--text);
+      transition: background 0.2s, color 0.2s;
+    }
+    h1 { text-align: center; margin-bottom: 4px; }
+    .author { text-align: center; color: var(--sub); margin-top: 0; }
+    .generated { text-align: center; color: var(--sub); font-size: 12px; }
+
+    .toolbar { display: flex; justify-content: center; margin: 16px 0 24px; }
+    .toolbar button {
+      padding: 8px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--sub);
+      background: var(--card);
+      color: var(--text);
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    /* 경고 배지 — 표시 여부는 파이썬이 결정해 치환 */
+    #warnBadge {
+      display: __WARN_DISPLAY__;
+      text-align: center;
+      background: #e15759;
+      color: white;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+      font-weight: bold;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 1px 4px var(--shadow);
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    .summary .num { font-size: 32px; font-weight: bold; margin: 8px 0 0; }
+    .summary .label { color: var(--sub); font-size: 14px; margin: 0; }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .grid .wide { grid-column: 1 / -1; }
+    .chart-box { position: relative; height: 300px; }
+
+    @media (max-width: 768px) {
+      .summary { grid-template-columns: 1fr; }
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <h1>서버 로그 분석 대시보드</h1>
+  <p class="author">작성자: __AUTHOR__</p>
+  <p class="generated">생성 시각: __GENERATED_AT__</p>
+
+  <div class="toolbar">
+    <button id="darkToggle">다크 모드</button>
+  </div>
+
+  <div id="warnBadge">__WARN_TEXT__</div>
+
+  <div class="summary">
+    <div class="card">
+      <p class="label">전체 요청 수</p>
+      <p class="num">__TOTAL_COUNT__</p>
+    </div>
+    <div class="card">
+      <p class="label">에러 건수 (4xx, 5xx)</p>
+      <p class="num">__ERROR_COUNT__</p>
+    </div>
+    <div class="card">
+      <p class="label">에러율</p>
+      <p class="num">__ERROR_RATE__%</p>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>상태코드별 요청 수</h2>
+      <div class="chart-box"><canvas id="statusChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>에러 최다 URL TOP 5</h2>
+      <div class="chart-box"><canvas id="errorChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>요청 수 TOP 5 IP (의심 IP)</h2>
+      <div class="chart-box"><canvas id="ipChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>시간대별 요청 수</h2>
+      <div class="chart-box"><canvas id="hourlyChart"></canvas></div>
+    </div>
+  </div>
+
+  <script>
+    // 파이썬이 표시자를 실제 데이터로 치환합니다
+    const D = {
+      status_labels: __STATUS_LABELS__,
+      status_data: __STATUS_DATA__,
+      hourly_labels: __HOURLY_LABELS__,
+      hourly_data: __HOURLY_DATA__,
+      error_labels: __ERROR_LABELS__,
+      error_data: __ERROR_DATA__,
+      ip_labels: __IP_LABELS__,
+      ip_data: __IP_DATA__
+    };
+
+    const PALETTE = ["#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f",
+                     "#edc948", "#b07aa1", "#ff9da7"];
+    let charts = {};
+
+    function render() {
+      Object.values(charts).forEach(c => c.destroy());
+
+      // 1. 상태코드: 도넛 차트
+      charts.status = new Chart(document.getElementById("statusChart"), {
+        type: "doughnut",
+        data: {
+          labels: D.status_labels,
+          datasets: [{ data: D.status_data, backgroundColor: PALETTE }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      // 2. 에러 URL TOP 5: 가로 막대
+      charts.error = new Chart(document.getElementById("errorChart"), {
+        type: "bar",
+        data: {
+          labels: D.error_labels,
+          datasets: [{ label: "에러 발생 수", data: D.error_data, backgroundColor: "#e15759" }]
+        },
+        options: { indexAxis: "y", responsive: true, maintainAspectRatio: false }
+      });
+
+      // 3. 의심 IP TOP 5: 가로 막대
+      charts.ip = new Chart(document.getElementById("ipChart"), {
+        type: "bar",
+        data: {
+          labels: D.ip_labels,
+          datasets: [{ label: "요청 수", data: D.ip_data, backgroundColor: "#f28e2b" }]
+        },
+        options: { indexAxis: "y", responsive: true, maintainAspectRatio: false }
+      });
+
+      // 4. 시간대별: 선 차트
+      charts.hourly = new Chart(document.getElementById("hourlyChart"), {
+        type: "line",
+        data: {
+          labels: D.hourly_labels,
+          datasets: [{ label: "요청 수", data: D.hourly_data,
+                       borderColor: "#59a14f", fill: false, tension: 0.3 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+
+    // 다크 모드 토글: 차트 글자·격자 색도 함께 전환
+    function applyChartTheme() {
+      const dark = document.body.classList.contains("dark");
+      Chart.defaults.color = dark ? "#eaeaea" : "#666666";
+      Chart.defaults.borderColor = dark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)";
+    }
+
+    document.getElementById("darkToggle").addEventListener("click", () => {
+      document.body.classList.toggle("dark");
+      applyChartTheme();
+      render();
+    });
+
+    applyChartTheme();
+    render();
+  </script>
+</body>
+</html>

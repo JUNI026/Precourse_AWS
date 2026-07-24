@@ -33,6 +33,7 @@ access.log 파일을 한 줄씩 읽어서 IP, 시각, HTTP 메서드, URL, 상�
 203.0.113.45 - - [07/Jul/2026:14:23:45 +0900] "GET /products/list HTTP/1.1" 200 5321
 """
 
+from fileinput import filename
 from typing import Optional
 import re
 import os
@@ -114,6 +115,8 @@ def main():
     status_counts = {}   # 상태코드별 개수를 저장할 딕셔너리
     hourly_counts = {f"{h:02d}": 0 for h in range(24)}
     error_url_counts = {}  # 에러(400+) 상태코드의 URL별 개수를 저장할 딕셔너리
+    ip_counts = {}         # IP별 요청 개수를 저장할 딕셔너리
+    method_counts = {}     # HTTP 메서드별 요청 개수를 저장할 딕셔너리
 
     print("== 처음 5줄 파싱 ==")
 
@@ -133,6 +136,8 @@ def main():
 
                 # 4단계: 400 이상 상태코드만 URL별로 집계
                 count_error_url(error_url_counts, result["status"], result["url"])
+                count_ip(ip_counts, result["ip"])
+                count_method(method_counts, result["method"])
             else:
                 fail_count += 1
 
@@ -154,19 +159,29 @@ def main():
     print_hourly_summary(hourly_counts)
 
     # 4단계: 에러 최다 URL TOP 5 출력 (반환값으로 정렬된 리스트를 받음)
-    top5 = print_top_error_urls(error_url_counts, top_n=5)
+    top5_urls = print_top_error_urls(error_url_counts, top_n=5)
+    top_error_urls = [list(t) for t in top5_urls]
 
-    # [(url, count), ...] 튜플 리스트 -> [[url, count], ...] 리스트의 리스트로 변환
-    # json 모듈은 튜플을 저장해도 어차피 배열(리스트)로 바뀌므로, 미리 리스트로 통일해둔다
-    top_error_urls = [list(t) for t in top5]
+    # 5단계: 요청 최다 IP TOP 5 출력
+    top5_ips = print_top_ips(ip_counts, top_n=5)
+    top_ips = [list(t) for t in top5_ips]
+
+    # 5단계: 메서드별 집계 출력
+    print_method_summary(method_counts)
+
+    # 5단계: 에러율 계산 및 출력
+    error_count = sum(error_url_counts.values())
+    print_error_rate(error_count, success_count)
 
     # 상태코드별 집계, 시간대별 집계, 에러 TOP5를 하나의 딕셔너리로 묶어서 저장
     results = {
         "status_counts": status_counts,
         "hourly_counts": hourly_counts,
         "top_error_urls": top_error_urls,
+        "top_ips": top_ips,
+        "method_counts": method_counts,
+        "error_rate_percent": round(calculate_error_rate(error_count, success_count), 2),
     }
-
     output_path = os.path.join(base_dir, "results.json")
     with open(output_path, "w", encoding="utf-8") as f:
         # ensure_ascii=False : 한글/특수문자가 유니코드 이스케이프(\uXXXX)로 깨져 보이지 않게 함
@@ -323,6 +338,64 @@ def print_top_error_urls(error_url_counts: dict, top_n: int = 5) -> list:
         print(f"{rank}위: {url} ({count}회)")
 
     return top_urls
+
+def count_ip(ip_counts: dict, ip: str) -> None:
+    """
+    ip_counts 딕셔너리에 IP별 요청 등장 횟수를 누적한다.
+    """
+    ip_counts[ip] = ip_counts.get(ip, 0) + 1
+
+
+def print_top_ips(ip_counts: dict, top_n: int = 5) -> list:
+    """
+    요청 수가 많은 IP를 상위 top_n개까지 순위와 함께 출력한다.
+    반환 형태: [(ip, count), (ip, count), ...]
+    """
+    print("\n== 요청 최다 IP TOP 5 (의심 트래픽 확인용) ==")
+
+    sorted_ips = sorted(ip_counts.items(), key=lambda item: item[1], reverse=True)
+    top_ips = sorted_ips[:top_n]
+
+    for rank, (ip, count) in enumerate(top_ips, start=1):
+        print(f"{rank}위: {ip} ({count}회)")
+
+    return top_ips
+
+
+def count_method(method_counts: dict, method: str) -> None:
+    """
+    method_counts 딕셔너리에 HTTP 메서드(GET, POST 등) 등장 횟수를 누적한다.
+    """
+    method_counts[method] = method_counts.get(method, 0) + 1
+
+
+def print_method_summary(method_counts: dict) -> None:
+    """
+    HTTP 메서드별 집계 결과를 알파벳 순서로 정렬해서 출력한다.
+    """
+    print("\n== 메서드별 요청 수 ==")
+
+    for method in sorted(method_counts.keys()):
+        count = method_counts[method]
+        print(f"{method} : {count}개")
+
+
+def calculate_error_rate(error_count: int, success_count: int) -> float:
+    """
+    전체 요청 중 에러(400 이상) 요청의 비율을 퍼센트로 계산한다.
+    """
+    if success_count == 0:
+        return 0.0
+    return (error_count / success_count) * 100
+
+
+def print_error_rate(error_count: int, success_count: int) -> None:
+    """
+    에러율을 계산해서 소수점 둘째 자리까지 출력한다.
+    """
+    rate = calculate_error_rate(error_count, success_count)
+    print("\n== 에러율 ==")
+    print(f"전체 {success_count}건 중 에러 {error_count}건 -> {rate:.2f}%")
 
 
 if __name__ == "__main__":
