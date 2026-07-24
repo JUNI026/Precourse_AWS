@@ -20,7 +20,7 @@
       border-radius: 8px;
       padding: 20px;
       margin-bottom: 24px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
     }
     .summary-row {
       display: flex;
@@ -32,7 +32,7 @@
     }
     .summary-label {
       margin: 0;
-      color: #9aa0a6;
+      color: #9a9aa6;
       font-size: 14px;
     }
     .summary-number {
@@ -66,15 +66,15 @@
   <div class="summary-row">
     <div class="card">
       <p class="summary-label">전체 요청 수</p>
-      <p class="summary-number">2,170</p>
+      <p class="summary-number">2,020</p>
     </div>
     <div class="card">
       <p class="summary-label">에러 건수</p>
-      <p class="summary-number" style="color:#e15759;">135</p>
+      <p class="summary-number" style="color:#e15759;">92</p>
     </div>
     <div class="card">
       <p class="summary-label">에러율</p>
-      <p class="summary-number" style="color:#e15759;">6.22%
+      <p class="summary-number" style="color:#e15759;">4.55%
         <span id="errorWarning" class="warning-icon">⚠️</span>
       </p>
     </div>
@@ -115,7 +115,7 @@
         labels: ["200", "301", "403", "404", "500", "502", "503"],
         datasets: [{
           label: "요청 수",
-          data: [1963, 72, 31, 33, 34, 15, 22],
+          data: [1879, 49, 14, 45, 13, 11, 9],
           backgroundColor: [
             "#4e79a7", "#59a14f", "#f28e2b", "#e15759",
             "#76b7b2", "#edc948", "#b07aa1", "#ff9da7"
@@ -131,7 +131,7 @@
         labels: ["00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23"],
         datasets: [{
           label: "요청 수",
-          data: [7, 7, 12, 16, 15, 11, 31, 29, 29, 34, 27, 21, 40, 41, 48, 76, 123, 170, 212, 286, 273, 274, 231, 157],
+          data: [10, 9, 7, 10, 7, 8, 32, 36, 44, 79, 87, 130, 219, 228, 212, 226, 180, 172, 120, 75, 42, 33, 23, 31],
           borderColor: "#59a14f",
           fill: false
         }]
@@ -142,10 +142,10 @@
     new Chart(document.getElementById("errorChart"), {
       type: "bar",
       data: {
-        labels: ["/api/coupon", "/api/payment", "/login", "/search", "/admin"],
+        labels: ["/api/payment", "/login", "/images/banner.png", "/search", "/admin"],
         datasets: [{
           label: "에러 발생 수",
-          data: [44, 27, 26, 21, 17],
+          data: [33, 25, 15, 14, 5],
           backgroundColor: "#e15759"
         }]
       },
@@ -156,10 +156,10 @@
     new Chart(document.getElementById("SuspiciousipChart"), {
       type: "bar",
       data: {
-      labels: ["198.51.100.77", "203.0.113.59", "203.0.113.38", "203.0.113.23", "203.0.113.46"],
+      labels: ["203.0.113.99", "203.0.113.26", "203.0.113.37", "203.0.113.14", "198.51.100.25"],
       datasets: [{
         label: "요청 수",
-        data: [120, 35, 31, 30, 30],
+        data: [170, 32, 30, 28, 27],
         backgroundColor: "#f28e2b"
       }]
     },
@@ -167,8 +167,8 @@
   });
 
     // 5. 에러율 5% 초과 시 경고 이모티콘 표시
-    const errorRate = parseFloat("6.22%");
-    if (errorRate > 4) {
+    const errorRate = parseFloat("4.55%");
+    if (errorRate > 5) {
       document.getElementById("errorWarning").style.display = "inline";
     }
 
