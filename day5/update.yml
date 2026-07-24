@@ -1,0 +1,34 @@
+name: update-dashboard
+
+on:
+  push:
+    paths:
+      - "access.log"     # access.log가 바뀐 push에만 자동 실행
+  workflow_dispatch:      # Actions 탭에서 수동 실행 버튼도 제공
+
+permissions:
+  contents: write         # 봇이 결과물을 커밋할 수 있게 하는 권한 (빼면 push 단계에서 실패!)
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. 저장소 내용을 GitHub의 컴퓨터로 가져오기
+      - uses: actions/checkout@v4
+
+      # 2. 파이썬 준비
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # 3. 이번 주에 만든 파이프라인 실행 (로그 분석 → 대시보드 생성)
+      - run: python run_all.py
+
+      # 4. 새로 만들어진 결과물을 자동 커밋 + push
+      - name: commit & push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html results.json
+          git diff --cached --quiet || git commit -m "auto: update dashboard"
+          git push

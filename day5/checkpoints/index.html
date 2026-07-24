@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>서버 로그 분석 대시보드</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f6fa;
+    }
+    h1 { text-align: center; }
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+  <h1>서버 로그 분석 대시보드</h1>
+  <p style="text-align:center;">작성자: 본인 이름</p>
+
+  <div class="card">
+    <h2>상태코드별 요청 수</h2>
+    <canvas id="statusChart"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>시간대별 요청 수</h2>
+    <canvas id="hourlyChart"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>에러 최다 URL TOP 5</h2>
+    <canvas id="errorChart"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>요청 수 TOP 5 IP (의심 IP)</h2>
+    <canvas id="ipChart"></canvas>
+  </div>
+
+  <script>
+    // 1. 상태코드별 막대 차트
+    new Chart(document.getElementById("statusChart"), {
+      type: "bar",
+      data: {
+        labels: ["200", "301", "500", "404", "403", "502", "503"],
+        datasets: [{
+          label: "요청 수",
+          data: [1879, 49, 13, 45, 14, 11, 9],
+          backgroundColor: "#4e79a7"
+        }]
+      }
+    });
+
+    // 2. 시간대별 선 차트
+    new Chart(document.getElementById("hourlyChart"), {
+      type: "line",
+      data: {
+        labels: ["00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23"],
+        datasets: [{
+          label: "요청 수",
+          data: [10, 9, 7, 10, 7, 8, 32, 36, 44, 79, 87, 130, 219, 228, 212, 226, 180, 172, 120, 75, 42, 33, 23, 31],
+          borderColor: "#59a14f",
+          fill: false
+        }]
+      }
+    });
+
+    // 3. 에러 URL TOP 5 가로 막대 차트
+    new Chart(document.getElementById("errorChart"), {
+      type: "bar",
+      data: {
+        labels: ["/api/payment", "/login", "/images/banner.png", "/search", "/admin"],
+        datasets: [{
+          label: "에러 발생 수",
+          data: [33, 25, 15, 14, 5],
+          backgroundColor: "#e15759"
+        }]
+      },
+      options: { indexAxis: "y" }
+    });
+
+    // 4. 의심 IP TOP 5 가로 막대 차트
+    new Chart(document.getElementById("ipChart"), {
+      type: "bar",
+      data: {
+        labels: ["203.0.113.99", "203.0.113.26", "203.0.113.37", "203.0.113.14", "198.51.100.25"],
+        datasets: [{
+          label: "요청 수",
+          data: [170, 32, 30, 28, 27],
+          backgroundColor: "#f28e2b"
+        }]
+      },
+      options: { indexAxis: "y" }
+    });
+  </script>
+</body>
+</html>
