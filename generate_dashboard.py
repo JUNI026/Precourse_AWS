@@ -78,7 +78,7 @@ html = html.replace("__ERROR_COUNT__", f"{error_total:,}")
 html = html.replace("__GENERATED_AT__", datetime.now().strftime("%Y-%m-%d %H:%M"))
 
 
-# 6. 작성자 이름 삽입  ★ "본인 이름"을 실제 이름으로 바꾸세요
+# 6. 작성자 이름 삽입 
 html = html.replace("__AUTHOR__", "JUN")
 
 # 7. 완성본 저장
