@@ -3,7 +3,7 @@
 # 5일차 · run_all.py
 # 로그 분석 → 대시보드 생성을 한 번에 실행하는 스크립트
 #  - log_analyzer.py, generate_dashboard.py 와 같은 폴더에서 실행
-# 실행: python run_all.py   (mac은 python3)
+# 실행: python run_all.py  
 # =====================================================
 import subprocess
 import sys
